@@ -1,4 +1,4 @@
- const express = require("express");
+const express = require("express");
 const cors = require("cors");
 const puppeteer = require("puppeteer");
 
@@ -22,6 +22,7 @@ app.get("/api/tc", async (req, res) => {
 
   try {
     browser = await puppeteer.launch({
+      executablePath: "/opt/render/.cache/puppeteer/chrome/linux-121.0.6167.85/chrome-linux64/chrome",
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
       headless: "new"
     });
