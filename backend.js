@@ -1,65 +1,82 @@
 const express = require("express");
-const cors = require("cors");
-const puppeteer = require("puppeteer");
+const axios = require("axios");
 
 const app = express();
-const PORT = process.env.PORT || 10000;
 
-app.use(cors());
-
+// ANA SAYFA (HTML + JS)
 app.get("/", (req, res) => {
-  res.send("Backend çalışıyor 🚀");
-});
+  res.send(`
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>TC Sorgu</title>
+<style>
+body { font-family: Arial; padding:20px; background:#111; color:#fff; }
+input, button { padding:10px; font-size:16px; }
+pre { background:#000; padding:10px; margin-top:15px; }
+</style>
+</head>
+<body>
 
-app.get("/api/tc", async (req, res) => {
-  const { tc } = req.query;
+<h2>TC Sorgu</h2>
 
-  if (!tc || tc.length !== 11) {
-    return res.json({ error: "TC 11 haneli olmalı" });
-  }
+<input id="tc" placeholder="TC gir">
+<button onclick="sorgula()">Sorgula</button>
 
-  let browser;
+<pre id="sonuc"></pre>
+
+<script>
+async function sorgula() {
+  const tc = document.getElementById("tc").value;
+
+  document.getElementById("sonuc").innerText = "Sorgulanıyor...";
 
   try {
-    browser = await puppeteer.launch({
-      executablePath: "/opt/render/.cache/puppeteer/chrome/linux-121.0.6167.85/chrome-linux64/chrome",
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      headless: "new"
-    });
+    const res = await fetch("/tc?tc=" + tc);
+    const data = await res.json();
 
-    const page = await browser.newPage();
+    document.getElementById("sonuc").innerText =
+      JSON.stringify(data, null, 2);
+  } catch (e) {
+    document.getElementById("sonuc").innerText = "Hata: " + e;
+  }
+}
+</script>
 
-    await page.setUserAgent(
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/121 Safari/537.36"
+</body>
+</html>
+  `);
+});
+
+// API PROXY
+app.get("/tc", async (req, res) => {
+  const tc = req.query.tc;
+
+  if (!tc) {
+    return res.json({ error: "TC girilmedi" });
+  }
+
+  try {
+    const response = await axios.get(
+      "https://arastir.sbs/api/tc.php?tc=" + tc,
+      {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120",
+        },
+      }
     );
 
-    await page.goto(`https://arastir.sbs/api/tc.php?tc=${tc}`, {
-      waitUntil: "networkidle2",
-      timeout: 20000
-    });
-
-    const content = await page.evaluate(() => document.body.innerText);
-
-    try {
-      const data = JSON.parse(content);
-      return res.json(data);
-    } catch {
-      return res.json({
-        error: "JSON değil",
-        raw: content
-      });
-    }
-
+    res.json(response.data);
   } catch (err) {
-    return res.json({
-      error: "Puppeteer hata",
-      detail: err.message
+    res.json({
+      error: "API çekilemedi",
+      detail: err.message,
     });
-  } finally {
-    if (browser) await browser.close();
   }
 });
 
-app.listen(PORT, () => {
-  console.log("Server çalışıyor:", PORT);
+app.listen(10000, () => {
+  console.log("Server çalışıyor: 10000");
 });
