@@ -1,9 +1,8 @@
 const express = require("express");
-const axios = require("axios");
 
 const app = express();
 
-// ANA SAYFA (HTML + JS)
+// ANA SAYFA
 app.get("/", (req, res) => {
   res.send(`
 <!DOCTYPE html>
@@ -49,7 +48,7 @@ async function sorgula() {
   `);
 });
 
-// API PROXY
+// API PROXY (AXIOS YOK)
 app.get("/tc", async (req, res) => {
   const tc = req.query.tc;
 
@@ -58,7 +57,7 @@ app.get("/tc", async (req, res) => {
   }
 
   try {
-    const response = await axios.get(
+    const response = await fetch(
       "https://arastir.sbs/api/tc.php?tc=" + tc,
       {
         headers: {
@@ -68,7 +67,18 @@ app.get("/tc", async (req, res) => {
       }
     );
 
-    res.json(response.data);
+    const text = await response.text();
+
+    try {
+      const json = JSON.parse(text);
+      res.json(json);
+    } catch {
+      res.json({
+        error: "API JSON dönmedi",
+        raw: text.substring(0, 300)
+      });
+    }
+
   } catch (err) {
     res.json({
       error: "API çekilemedi",
